@@ -384,9 +384,16 @@ const friendRequest = async (req, res) => {
 };
 
 const getFriendRequest = async (req, res) => {
+    
     try {
         const { userId } = req.body.user;
-        const q = query(collection(dbStore, "friendrequest"), where("requestStatus", "==", "Pending"), where("requestTo", "==", userId), orderBy("createdAt", "desc"), limit(10));
+        const q = query(
+            collection(dbStore, "friendrequest"),
+            where("requestStatus", "==", "Pending"),
+            where("requestTo", "==", userId),
+            orderBy("createdAt", "desc"),
+            limit(10)
+        );
         const querySnapshot = await getDocs(q);
         let data = [];
         let temp_data = [];
@@ -395,40 +402,47 @@ const getFriendRequest = async (req, res) => {
                 ...doc.data(),
                 id: doc.id
             });
-        })
-
+        });
+    
         for (let i = 0; i < temp_data.length; i++) {
             let finalId = temp_data[i];
             let docRef = doc(dbStore, "users", finalId.requestFrom);
             let snapShot = await getDoc(docRef);
-            let friends = []
-            let frei = snapShot.data().friends;
-            for (let j = 0; j < frei.length; j++) {
-                let dociRef = doc(dbStore, "users", frei[j]);
-                let docsnapShot = await getDoc(dociRef);
-                // console.log("ok3");
-                let addUser = {
-                    ...docsnapShot.data(),
-                    userId: docsnapShot.id,
-                    password: ""
+    
+            if (snapShot.exists()) {
+                let friends = [];
+                let frei = snapShot.data().friends || [];  // Default to empty array if friends doesn't exist
+    
+                for (let j = 0; j < frei.length; j++) {
+                    let dociRef = doc(dbStore, "users", frei[j]);
+                    let docsnapShot = await getDoc(dociRef);
+    
+                    let addUser = {
+                        ...docsnapShot.data(),
+                        userId: docsnapShot.id,
+                        password: ""
+                    };
+                    friends.push(addUser);
+                }
+    
+                let deti = {
+                    ...snapShot.data(),
+                    password: "",
+                    userId: finalId.requestFrom,
+                    friends: friends
                 };
-                friends.push(addUser);
+    
+                data.push({ ...deti, rid: temp_data[i].id });
+            } else {
+                console.log(`User with id ${finalId.requestFrom} does not exist.`);
             }
-            let deti = {
-                ...snapShot.data(),
-                password: "",
-                userId: finalId.requestFrom,
-                friends: friends
-            }
-            data.push({ ...deti, rid: temp_data[i].id });
         }
-
+    
         res.status(200).send({
             success: true,
             data: data,
         });
-    }
-    catch (e) {
+    } catch (e) {
         console.log(e);
         res.status(500).json({
             message: "auth error",
@@ -436,6 +450,61 @@ const getFriendRequest = async (req, res) => {
             error: e.message,
         });
     }
+    
+    
+    // try {
+    //     const { userId } = req.body.user;
+    //     const q = query(collection(dbStore, "friendrequest"), where("requestStatus", "==", "Pending"), where("requestTo", "==", userId), orderBy("createdAt", "desc"), limit(10));
+    //     const querySnapshot = await getDocs(q);
+    //     let data = [];
+    //     let temp_data = [];
+    //     querySnapshot.forEach((doc) => {
+    //         temp_data.push({
+    //             ...doc.data(),
+    //             id: doc.id
+    //         });
+    //     })
+
+    //     for (let i = 0; i < temp_data.length; i++) {
+    //         let finalId = temp_data[i];
+    //         let docRef = doc(dbStore, "users", finalId.requestFrom);
+    //         let snapShot = await getDoc(docRef);
+    //         let friends = [];
+    //         console.log(snapShot.data(),"koko");
+    //         let frei = snapShot.data().friends;
+    //         for (let j = 0; j < frei.length; j++) {
+    //             let dociRef = doc(dbStore, "users", frei[j]);
+    //             let docsnapShot = await getDoc(dociRef);
+    //             // console.log("ok3");
+    //             let addUser = {
+    //                 ...docsnapShot.data(),
+    //                 userId: docsnapShot.id,
+    //                 password: ""
+    //             };
+    //             friends.push(addUser);
+    //         }
+    //         let deti = {
+    //             ...snapShot.data(),
+    //             password: "",
+    //             userId: finalId.requestFrom,
+    //             friends: friends
+    //         }
+    //         data.push({ ...deti, rid: temp_data[i].id });
+    //     }
+
+    //     res.status(200).send({
+    //         success: true,
+    //         data: data,
+    //     });
+    // }
+    // catch (e) {
+    //     console.log(e);
+    //     res.status(500).json({
+    //         message: "auth error",
+    //         success: false,
+    //         error: e.message,
+    //     });
+    // }
 };
 
 const acceptRequest = async (req, res, next) => {
