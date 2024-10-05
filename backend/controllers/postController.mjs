@@ -39,43 +39,98 @@ const createPost = async (req, res) => {
 };
 
 const getPosts = async (req, res) => {
+
     try {
         const { userId } = req.body.user;
         const docref = query(collection(dbStore, "posts"), orderBy("createdAt", "desc"));
         const snapShot = await getDocs(docref);
-        let temp_posts = []
-        let data = []
+        let temp_posts = [];
+        let data = [];
+    
         snapShot.forEach((doc) => {
             temp_posts.push({
                 ...doc.data(),
                 _id: doc.id
             });
-        })
+        });
+    
         for (let i = 0; i < temp_posts.length; i++) {
             let doci = temp_posts[i];
             let new_ref = doc(dbStore, "users", doci.userId);
             let newShot = await getDoc(new_ref);
-            data.push({
-                ...temp_posts[i],
-                userId: {
-                    _id: newShot.id,
-                    name: newShot.data().name,
-                    location: newShot.data().location,
-                    profileUrl: newShot.data().profileUrl
-                }
-            });
+    
+            if (newShot.exists()) {
+                data.push({
+                    ...temp_posts[i],
+                    userId: {
+                        _id: newShot.id,
+                        name: newShot.data().name,
+                        location: newShot.data().location,
+                        profileUrl: newShot.data().profileUrl
+                    }
+                });
+            } else {
+                console.warn(`User document for userId ${doci.userId} does not exist.`);
+                // Optionally, you could push the post without user info or with default info
+                data.push({
+                    ...temp_posts[i],
+                    userId: {
+                        _id: null,
+                        name: 'Unknown',
+                        location: 'Unknown',
+                        profileUrl: null
+                    }
+                });
+            }
         }
-
+    
         res.status(200).json({
-            sucess: true,
+            success: true,
             message: "successfully",
             data: data,
         });
-    }
-    catch (e) {
+    } catch (e) {
         console.log(e);
         res.status(404).send({ message: e.message });
     }
+
+    // try {
+    //     const { userId } = req.body.user;
+    //     const docref = query(collection(dbStore, "posts"), orderBy("createdAt", "desc"));
+    //     const snapShot = await getDocs(docref);
+    //     let temp_posts = []
+    //     let data = []
+    //     snapShot.forEach((doc) => {
+    //         temp_posts.push({
+    //             ...doc.data(),
+    //             _id: doc.id
+    //         });
+    //     })
+    //     for (let i = 0; i < temp_posts.length; i++) {
+    //         let doci = temp_posts[i];
+    //         let new_ref = doc(dbStore, "users", doci.userId);
+    //         let newShot = await getDoc(new_ref);
+    //         data.push({
+    //             ...temp_posts[i],
+    //             userId: {
+    //                 _id: newShot.id,
+    //                 name: newShot.data().name,
+    //                 location: newShot.data().location,
+    //                 profileUrl: newShot.data().profileUrl
+    //             }
+    //         });
+    //     }
+
+    //     res.status(200).json({
+    //         sucess: true,
+    //         message: "successfully",
+    //         data: data,
+    //     });
+    // }
+    // catch (e) {
+    //     console.log(e);
+    //     res.status(404).send({ message: e.message });
+    // }
 };
 
 const getPost = async (req, res) => {
